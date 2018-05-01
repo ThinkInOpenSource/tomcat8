@@ -32,10 +32,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
@@ -177,7 +174,9 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
      * Handling of accepted sockets.
      */
     private Handler handler = null;
-    public void setHandler(Handler handler ) { this.handler = handler; }
+    public void setHandler(Handler handler ) {
+        this.handler = handler;
+    }
     public Handler getHandler() { return handler; }
 
 
@@ -427,6 +426,7 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
                 pollerThread.start();
             }
 
+            // 启动Acceptor线程
             startAcceptorThreads();
         }
     }
@@ -530,6 +530,8 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
             //disable blocking, APR style, we are gonna be polling it
             socket.configureBlocking(false);
             Socket sock = socket.socket();
+
+            // 设置socket属性
             socketProperties.setProperties(sock);
 
             NioChannel channel = nioChannels.pop();
@@ -559,6 +561,8 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
                     channel.reset();
                 }
             }
+
+            // 轮询获取Poller
             getPoller0().register(channel);
         } catch (Throwable t) {
             ExceptionUtils.handleThrowable(t);
@@ -645,6 +649,7 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
     /**
      * The background thread that listens for incoming TCP/IP connections and
      * hands them off to an appropriate processor.
+     * 处理TCP/IP连接请求
      */
     protected class Acceptor extends AbstractEndpoint.Acceptor {
 
@@ -678,7 +683,7 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
                     SocketChannel socket = null;
                     try {
                         // Accept the next incoming connection from the server
-                        // socket
+                        // socket 接收连接请求
                         socket = serverSock.accept();
                     } catch (IOException ioe) {
                         //we didn't get a socket
@@ -783,6 +788,7 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
         public void run() {
             if ( interestOps == OP_REGISTER ) {
                 try {
+                    // 将socket(读事件)注册到selector
                     socket.getIOChannel().register(socket.getPoller().getSelector(), SelectionKey.OP_READ, key);
                 } catch (Exception x) {
                     log.error("", x);
@@ -926,6 +932,8 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
             ka.setTimeout(getSocketProperties().getSoTimeout());
             ka.setKeepAliveLeft(NioEndpoint.this.getMaxKeepAliveRequests());
             ka.setSecure(isSSLEnabled());
+
+            // PollerEvent，cache复用PollerEvent
             PollerEvent r = eventCache.pop();
             ka.interestOps(SelectionKey.OP_READ);//this is what OP_REGISTER turns into.
             if ( r==null) r = new PollerEvent(socket,ka,OP_REGISTER);
@@ -952,6 +960,10 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
                 ka = (KeyAttachment) key.attach(null);
                 if (ka!=null) handler.release(ka);
                 else handler.release((SocketChannel)key.channel());
+
+                /*
+                 * key.cancel 触发channel从selector移除
+                 */
                 if (key.isValid()) key.cancel();
                 if (key.channel().isOpen()) {
                     try {
@@ -1022,6 +1034,7 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
                         }
                         break;
                     } else {
+                        // 处理新到来的连接请求
                         hasEvents = events();
                     }
                     try {
@@ -1094,6 +1107,12 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
             stopLatch.countDown();
         }
 
+        /**
+         * 这里会对SelectionKey进行处理，传递给Tomcat业务线程池，如果出现非正常情况，则调用cancelledKey取消该SelectionKey。
+         * SelectionKey.cancel方法会移除对应的channel注册事件。
+         * 正常情况下，该流程不会调用cancelledKey，也就是说，如果同一个socket连接前后来了两次请求，则这两次请求可能会由两个
+         * 不同的业务线程来执行。
+         */
         protected boolean processKey(SelectionKey sk, KeyAttachment attachment) {
             boolean result = true;
             try {
@@ -1497,6 +1516,7 @@ public class NioEndpoint extends AbstractEndpoint<NioChannel> {
                     if (status == null) {
                         state = handler.process(ka, SocketStatus.OPEN_READ);
                     } else {
+                        // 业务处理handler 比如Http11NioProtocol$Http11ConnectionHandler
                         state = handler.process(ka, status);
                     }
                     if (state == SocketState.CLOSED) {

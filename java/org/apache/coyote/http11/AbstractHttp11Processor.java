@@ -976,6 +976,7 @@ public abstract class AbstractHttp11Processor<S> extends AbstractProcessor<S> {
     public SocketState process(SocketWrapper<S> socketWrapper)
         throws IOException {
         RequestInfo rp = request.getRequestProcessor();
+        // 请求处理的几个阶段设置
         rp.setStage(org.apache.coyote.Constants.STAGE_PARSE);
 
         // Setting up the I/O
@@ -1003,6 +1004,7 @@ public abstract class AbstractHttp11Processor<S> extends AbstractProcessor<S> {
                 upgradeToken == null && !endpoint.isPaused()) {
 
             // Parsing the request header
+            // 数据读取，解析请求行/请求头
             try {
                 setRequestLineReadTimeout();
 
@@ -1067,6 +1069,7 @@ public abstract class AbstractHttp11Processor<S> extends AbstractProcessor<S> {
                 // Setting up filters, and parse some request headers
                 rp.setStage(org.apache.coyote.Constants.STAGE_PREPARE);
                 try {
+                    // setup the request filters
                     prepareRequest();
                 } catch (Throwable t) {
                     ExceptionUtils.handleThrowable(t);
@@ -1092,6 +1095,10 @@ public abstract class AbstractHttp11Processor<S> extends AbstractProcessor<S> {
             if (!getErrorState().isError()) {
                 try {
                     rp.setStage(org.apache.coyote.Constants.STAGE_SERVICE);
+
+                    // CoyoteAdapter，Adapter连接了Tomcat连接器Connector和容器Container.
+                    // 它的实现类是CoyoteAdapter主要负责的是对请求进行封装,构造Request和Response对象.
+                    // 并将请求转发给Container也就是Servlet容器.
                     getAdapter().service(request, response);
                     // Handle when the response was committed before a serious
                     // error occurred.  Throwing a ServletException should both

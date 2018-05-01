@@ -235,7 +235,10 @@ public abstract class AbstractEndpoint<S> {
     }
     public int getAcceptorThreadPriority() { return acceptorThreadPriority; }
 
-
+    /**
+     * EndPoint能处理的最大连接数，当超过该连接数，拒绝请求。
+     * 注意，处于CLOSE_WAIT/FIN/WAIT_TIME状态的连接也是要占用一个连接数的
+     */
     private int maxConnections = 10000;
     public void setMaxConnections(int maxCon) {
         this.maxConnections = maxCon;
