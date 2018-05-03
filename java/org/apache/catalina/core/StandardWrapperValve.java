@@ -132,6 +132,7 @@ final class StandardWrapperValve
         // Allocate a servlet instance to process this request
         try {
             if (!unavailable) {
+                //加载servlet
                 servlet = wrapper.allocate();
             }
         } catch (UnavailableException e) {
@@ -178,6 +179,7 @@ final class StandardWrapperValve
         request.setAttribute(Globals.DISPATCHER_REQUEST_PATH_ATTR,
                 requestPathMB);
         // Create the filter chain for this request
+        // 根据配置建立一个filter-servlet的处理链表，servlet在链表的尾端
         ApplicationFilterChain filterChain =
                 ApplicationFilterFactory.createFilterChain(request, wrapper, servlet);
 
@@ -209,6 +211,7 @@ final class StandardWrapperValve
                     } else if (comet) {
                         filterChain.doFilterEvent(request.getEvent());
                     } else {
+                        // filter调用链执行
                         filterChain.doFilter
                             (request.getRequest(), response.getResponse());
                     }
