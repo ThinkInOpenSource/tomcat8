@@ -213,6 +213,7 @@ final class ApplicationFilterChain implements FilterChain, CometFilterChain {
         throws IOException, ServletException {
 
         // Call the next filter if there is one
+        // 调用调用链doFilter
         if (pos < n) {
             ApplicationFilterConfig filterConfig = filters[pos++];
             Filter filter = null;
@@ -260,6 +261,7 @@ final class ApplicationFilterChain implements FilterChain, CometFilterChain {
         }
 
         // We fell off the end of the chain -- call the servlet instance
+        // 调用filter的最后一个，也就是对应的Servlet
         try {
             if (ApplicationDispatcher.WRAP_SAME_OBJECT) {
                 lastServicedRequest.set(request);

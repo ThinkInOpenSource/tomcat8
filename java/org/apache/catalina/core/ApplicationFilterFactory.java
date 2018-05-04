@@ -115,9 +115,11 @@ public final class ApplicationFilterFactory {
 
         // Add the relevant path-mapped filters to this filter chain
         for (int i = 0; i < filterMaps.length; i++) {
+            // 是否与dispatcher匹配
             if (!matchDispatcher(filterMaps[i] ,dispatcher)) {
                 continue;
             }
+            // 是否与RequestPath匹配
             if (!matchFiltersURL(filterMaps[i], requestPath))
                 continue;
             ApplicationFilterConfig filterConfig = (ApplicationFilterConfig)
